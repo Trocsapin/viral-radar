@@ -2,6 +2,7 @@ import streamlit as st
 from google import genai
 import tempfile
 import os
+import time
 
 # --- ARAYÜZ YAPILANDIRMASI ---
 st.set_page_config(page_title="Viral İçerik Motoru", page_icon="👁️", layout="centered")
@@ -55,6 +56,17 @@ if st.button("🚀 Videoyu İzle ve Gönderiyi Yaz"):
                 
                 # Videoyu Gemini'nin beynine yüklüyoruz
                 video_dosyasi = client.files.upload(file=tmp_file_path)
+                
+                # --- YENİ EKLENEN BEKLEME ODASI ---
+                # Yapay zekanın videoyu sindirmesi için ona zaman tanıyoruz
+                while True:
+                    dosya_durumu = client.files.get(name=video_dosyasi.name)
+                    if dosya_durumu.state.name == "ACTIVE":
+                        break  # Sindirme bitti, hazır!
+                    elif dosya_durumu.state.name == "FAILED":
+                        raise Exception("Video yapay zeka tarafından işlenemedi.")
+                    time.sleep(3)  # 3 saniye bekle ve tekrar sor
+                # -----------------------------------
                 
                 prompt = f"""
                 GÖREV: Sana yüklediğim bu videoyu çok dikkatlice izle. İçeriğinde tam olarak ne olduğunu, yapılan işlemi, varsa teknik detayları (özellikle mühendislik, imalat veya şaşırtıcı olaylar) harika bir şekilde anla.
