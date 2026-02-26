@@ -47,42 +47,36 @@ if st.button("🚀 Videoyu İzle ve Gönderiyi Yaz"):
     else:
         with st.spinner("Yapay zeka videoyu baştan sona izliyor, detayları analiz ediyor... (Bu işlem videonun uzunluğuna göre 30-60 saniye sürebilir)"):
             try:
-                # Videoyu geçici olarak sisteme kaydediyoruz ki Gemini izleyebilsin
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp_file:
                     tmp_file.write(yuklenen_video.read())
                     tmp_file_path = tmp_file.name
                 
                 client = genai.Client(api_key=GEMINI_API_KEY)
-                
-                # Videoyu Gemini'nin beynine yüklüyoruz
                 video_dosyasi = client.files.upload(file=tmp_file_path)
                 
-                # --- YENİ EKLENEN BEKLEME ODASI ---
-                # Yapay zekanın videoyu sindirmesi için ona zaman tanıyoruz
                 while True:
                     dosya_durumu = client.files.get(name=video_dosyasi.name)
                     if dosya_durumu.state.name == "ACTIVE":
-                        break  # Sindirme bitti, hazır!
+                        break
                     elif dosya_durumu.state.name == "FAILED":
                         raise Exception("Video yapay zeka tarafından işlenemedi.")
-                    time.sleep(3)  # 3 saniye bekle ve tekrar sor
-                # -----------------------------------
+                    time.sleep(3)
                 
+                # --- GÜNCELLENEN PROMPT (BAŞLIK KÖRLÜĞÜ VE HASHTAG EKLENDİ) ---
                 prompt = f"""
-                GÖREV: Sana yüklediğim bu videoyu çok dikkatlice izle. İçeriğinde tam olarak ne olduğunu, yapılan işlemi, varsa teknik detayları (özellikle mühendislik, imalat veya şaşırtıcı olaylar) harika bir şekilde anla.
+                GÖREV: Sana yüklediğim bu videoyu çok dikkatlice izle. Videonun dosya adına KESİNLİKLE aldırış etme, yanıltıcı olabilir. Sadece kendi gözlerinle gördüğün görsel ve işitsel detaylara odaklanarak içeriğinde tam olarak ne olduğunu, yapılan işlemi (hangi teknik, metod veya mühendislik uygulaması olduğunu) harika bir şekilde analiz et.
                 
                 Şimdi, bu videoyu X'te (Twitter) paylaşmak için Türkçe bir metin hazırla.
                 Format tercihi: {format_secimi}
                 
-                DİKKAT KURALI (EN ÖNEMLİSİ): Kesinlikle yapay zeka gibi konuşma! "Hey millet, şuna bakın", "İşte harika bir video", "Buna inanamayacaksınız" gibi sahte, pazarlamacı ve robotik ifadeler KULLANMA.
+                DİKKAT KURALI (EN ÖNEMLİSİ): Kesinlikle yapay zeka gibi konuşma! "Hey millet, şuna bakın", "İşte harika bir video" gibi sahte, pazarlamacı ve robotik ifadeler KULLANMA.
                 Sıradan bir Türk internet kullanıcısı ağzıyla yaz. Kadıköy'de bir kafede masadaki arkadaşına izletiyormuşsun gibi dümdüz, sade, samimi ve gerçek bir insan tepkisi ver.
                 Eğer format "Tekli Tweet" ise, videoyu izlemeye teşvik eden merak uyandırıcı tek bir cümle kur.
                 Eğer format "Bilgi Seli" ise, videodaki olayı gereksiz uzatmadan kısa flood maddeleri halinde anlat.
-                Hashtag KULLANMA. Maksimum 1 veya 2 doğal emoji kullan.
-                Sadece X metnini ver, başka hiçbir açıklama yapma.
+                Metnin en sonuna, konuya tam uygun (özellikle endüstriyel veya teknikse o alana yönelik) 2 veya 3 adet popüler hashtag ekle.
+                Maksimum 1 veya 2 doğal emoji kullan. Sadece X metnini ve hashtagleri ver.
                 """
                 
-                # Gemini'den videoyu izleyip yorumlamasını istiyoruz
                 res = client.models.generate_content(
                     model='gemini-2.5-flash', 
                     contents=[video_dosyasi, prompt]
@@ -91,7 +85,6 @@ if st.button("🚀 Videoyu İzle ve Gönderiyi Yaz"):
                 st.success("İşte paylaşmaya hazır, %100 doğal içerik!")
                 st.info(res.text.strip())
                 
-                # İşlem bitince geçici dosyayı siliyoruz (Güvenlik)
                 os.remove(tmp_file_path)
                 
             except Exception as e:
